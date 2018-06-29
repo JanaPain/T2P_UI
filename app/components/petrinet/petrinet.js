@@ -7,6 +7,9 @@ angular.module('myApp').
    pnml: '<'
       },
     controller: function petrinetController() {
+
+      var generateWorkFlowNet=true;//Determines wether WoPeD specific Elements like XOR Split are created
+
       function generatePetrinet(petrinet){
         var data=getVisElements(petrinet);
 
@@ -31,7 +34,11 @@ angular.module('myApp').
       },
           groups: {
             places: {color:{background:'#4DB6AC'}, borderWidth:3, shape: 'circle'},
-            transitions: {color:{background:'#FFB74D',border: '#FB8C00',}, shape: 'square', borderWidth:3}
+            transitions: {color:{background:'#FFB74D',border: '#FB8C00',}, shape: 'square', borderWidth:3},
+            andJoin: {color:{background:'#DCE775',border: '#9E9D24',}, shape: 'square', borderWidth:3},
+            andSplit: {color:{background:'#DCE775',border: '#9E9D24',}, shape: 'square', borderWidth:3},
+            xorSplit: {color:{background:'#9575CD',border: '#512DA8',}, shape: 'square', borderWidth:3,image:"/img/and_split.svg"},
+            xorJoin: {color:{background:'#9575CD',border: '#512DA8',}, shape: 'square', borderWidth:3}
       },
       interaction:{
         zoomView:true,
@@ -51,6 +58,8 @@ angular.module('myApp').
           this.$onChanges = function (changes) {
               generatePetrinet(getPetriNet(changes.pnml.currentValue));
         }
+
+        var gateways=[];
 
 
            function getPetriNet( PNML ){
@@ -75,10 +84,71 @@ angular.module('myApp').
 
              for (var x=0;x<transitions.length;x++){
                  var transition = transitions[x];
-                 petrinet.transitions.push({id:transition.getAttribute("id"),label:transition.getElementsByTagName("text")[0].textContent})
+                 var isGateway = transition.getElementsByTagName("operator").length >0;
+                 var gatewayType=undefined;
+                 var gatewayID=undefined;
+                 if(isGateway){
+                   gatewayType=transition.getElementsByTagName("operator")[0].getAttribute("type");
+                   gatewayID=transition.getElementsByTagName("operator")[0].getAttribute("id");
+                 }
+                 petrinet.transitions.push({id:transition.getAttribute("id"),label:transition.getElementsByTagName("text")[0].textContent,isGateway:isGateway,gatewayType:gatewayType,gatewayID:gatewayID})
              }
 
              return petrinet;
+           }
+
+           function resetGatewayLog(){
+             gateways=[];
+           }
+
+           function logContainsGateway(transition){
+             for (var x=0;x<gateways.length;x++){
+               if(gateways[x].gatewayID===transition.gatewayID)
+               return true;
+             }
+             return false;
+           }
+
+           function logGatewayTransition(transition){
+                if(logContainsGateway(transition)===true){
+                  for (var x=0;x<gateways.length;x++){
+                    if(gateways[x].gatewayID===transition.gatewayID)
+                    gateways[x].transitionIDs.push({transitionID:transition.id});
+                  }
+                }else{
+                gateways.push({gatewayID:transition.gatewayID, transitionIDs:[{transitionID:transition.id}]});
+                }
+           }
+
+           function getGatewayIDsforReplacement(arc){
+             var replacement ={source:null,target:null};
+             for (var x=0;x<gateways.length;x++){
+               for (var i=0;i<gateways[x].transitionIDs.length;i++){
+                  if(arc.source===gateways[x].transitionIDs[i].transitionID){
+                      replacement.source=gateways[x].gatewayID;
+                  }
+                  if(arc.target===gateways[x].transitionIDs[i].transitionID){
+                      replacement.target=gateways[x].gatewayID;
+                  }
+               }
+
+
+             }
+            return replacement;
+           }
+
+           function replaceGatewayArcs(arcs){
+
+             for (var x=0;x<arcs.length;x++){
+                var replacement=getGatewayIDsforReplacement(arcs[x]);
+                  if(replacement.source!==null){
+                    arcs[x].source=replacement.source;
+                  }
+                  if(replacement.target!==null){
+                    arcs[x].target=replacement.target;
+                  }
+
+             }
            }
 
 
@@ -91,13 +161,51 @@ angular.module('myApp').
              }
 
              for (var x=0;x<PetriNet.transitions.length;x++){
-               nodes.add({id: PetriNet.transitions[x].id,group:"transitions", label: PetriNet.transitions[x].id,title:PetriNet.transitions[x].label});
+               if(!PetriNet.transitions[x].isGateway || generateWorkFlowNet===false){
+                 nodes.add({id: PetriNet.transitions[x].id,group:"transitions", label: PetriNet.transitions[x].id,title:PetriNet.transitions[x].label});
+               }
+               else{
+                  var gatewayGroup="";
+                  var label="";
+                 switch(PetriNet.transitions[x].gatewayType) {
+                   case "101":
+                    gatewayGroup="andSplit";
+                    label="AND Split"
+                    break;
+                   case "102":
+                    gatewayGroup="andJoin";
+                    label="AND Join‚"
+                    break;
+                   case "104":
+                    gatewayGroup="xorSplit";
+                    label="XOR Split"
+                    break;
+                   case "105":
+                    gatewayGroup="xorJoin";
+                    label="XOR Join"
+                    break;
+
+                  }
+                  if(!logContainsGateway(PetriNet.transitions[x])){
+                    nodes.add({id: PetriNet.transitions[x].gatewayID,group:gatewayGroup, label:label ,title:PetriNet.transitions[x].label});
+
+                  }
+                  logGatewayTransition(PetriNet.transitions[x]);
+               }
+
              }
+
+             if(generateWorkFlowNet===true){
+               replaceGatewayArcs(PetriNet.arcs);
+             }
+
 
              for (var x=0;x<PetriNet.arcs.length;x++){
                edges.add({from: PetriNet.arcs[x].source, to: PetriNet.arcs[x].target, arrows:"to"})
              }
+             resetGatewayLog();
              return {nodes:nodes,edges:edges};
+
            }
          }
 
