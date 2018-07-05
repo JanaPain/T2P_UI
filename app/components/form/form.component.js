@@ -33,7 +33,7 @@ angular.module('myApp').
       $scope.loading(true);
         var req = {
             method: 'POST',
-            url: 'http://193.196.7.214:8080/t2p/generate',
+            url: '/t2p/generate',
             headers: {
      'Content-Type': "text"
    },

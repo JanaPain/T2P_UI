@@ -10,24 +10,18 @@ var myApp=angular.module('myApp', [
 
 
 myApp.controller('T2PController', function T2PController($scope) {
-  var  xmlhttp=new XMLHttpRequest();
-  xmlhttp.open("GET","/testPNML/test.pnml",false);
-  xmlhttp.send();
-  var xmlDoc=xmlhttp.response;
-  var parser = new DOMParser();
-  var xmlDoc2 = parser.parseFromString(xmlDoc,"text/xml");
-  $scope.pnml=xmlDoc2;
+
+
+
+  $scope.displayInfo=true;
   $scope.loading=false;
   $scope.callback = function(pnml){
+    $scope.displayInfo=false;
   $scope.pnml = pnml;
 }
 
 $scope.loadingCallback = function(loading){
+  $scope.displayInfo=false;
 $scope.loading = loading;
 }
 });
-config(['$locationProvider', '$routeProvider', function($locationProvider, $routeProvider) {
-  $locationProvider.hashPrefix('!');
-
-  $routeProvider.otherwise({redirectTo: '/view1'});
-}]);

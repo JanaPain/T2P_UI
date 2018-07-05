@@ -33,7 +33,7 @@ angular.module('myApp').
           }
       },
           groups: {
-            places: {color:{background:'#4DB6AC'}, borderWidth:3, shape: 'circle'},
+            places: {color:{background:'#4DB6AC',border: '#00695C'}, borderWidth:3, shape: 'circle'},
             transitions: {color:{background:'#FFB74D',border: '#FB8C00',}, shape: 'square', borderWidth:3},
             andJoin: {color:{background:'#DCE775',border: '#9E9D24',}, shape: 'square', borderWidth:3},
             andSplit: {color:{background:'#DCE775',border: '#9E9D24',}, shape: 'square', borderWidth:3},
@@ -51,17 +51,18 @@ angular.module('myApp').
 
 
       this.$onInit = function () {
+        if(!this.pnml===undefined){
         generatePetrinet(getPetriNet(this.pnml));
-
+      }
           };
 
           this.$onChanges = function (changes) {
+            if(typeof changes.pnml.currentValue !== 'undefined'){
               generatePetrinet(getPetriNet(changes.pnml.currentValue));
+            }
         }
 
         var gateways=[];
-
-
            function getPetriNet( PNML ){
              var places=PNML.getElementsByTagName("place")
              var transitions=PNML.getElementsByTagName("transition")
